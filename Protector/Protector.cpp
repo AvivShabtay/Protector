@@ -55,7 +55,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING) {
 	DriverObject->DriverUnload = ProtectorUnload;
 	DriverObject->MajorFunction[IRP_MJ_CREATE] = ProtectorCreateClose;
 	DriverObject->MajorFunction[IRP_MJ_CLOSE] = ProtectorCreateClose;
-	DriverObject->MajorFunction[IRP_MJ_READ] = ProtectorRead;
+	//DriverObject->MajorFunction[IRP_MJ_READ] = ProtectorRead;
 	DriverObject->MajorFunction[IRP_MJ_WRITE] = ProtectorWrite;
 
 	return status;
@@ -93,6 +93,20 @@ NTSTATUS ProtectorRead(PDEVICE_OBJECT, PIRP Irp) {
 	auto status = STATUS_SUCCESS;
 	auto count = 0;
 
+	// Finish the request:
+	Irp->IoStatus.Status = status;
+	Irp->IoStatus.Information = count;
+	IoCompleteRequest(Irp, 0);
+	return status;
+}
+
+/*
+* The Driver's dispatch routine for write operations.
+*/
+NTSTATUS ProtectorWrite(PDEVICE_OBJECT, PIRP Irp) {
+	auto status = STATUS_SUCCESS;
+	auto count = 0;
+
 	auto stack = IoGetCurrentIrpStackLocation(Irp);
 	auto len = stack->Parameters.Read.Length;
 	if (len == 0)
@@ -116,10 +130,4 @@ NTSTATUS ProtectorRead(PDEVICE_OBJECT, PIRP Irp) {
 	Irp->IoStatus.Information = count;
 	IoCompleteRequest(Irp, 0);
 	return status;
-}
-
-/*
-* The Driver's dispatch routine for write operations.
-*/
-NTSTATUS ProtectorWrite(PDEVICE_OBJECT, PIRP Irp) {
 }
