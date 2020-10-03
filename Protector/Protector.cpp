@@ -8,6 +8,8 @@ DRIVER_UNLOAD ProtectorUnload;
 DRIVER_DISPATCH ProtectorCreateClose;
 DRIVER_DISPATCH ProtectorRead;
 DRIVER_DISPATCH ProtectorWrite;
+DRIVER_DISPATCH ProtectorDeviceControl;
+NTSTATUS CompleteIrp(PIRP Irp, NTSTATUS status = STATUS_SUCCESS, ULONG_PTR info = 0);
 
 extern "C"
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING) {
@@ -57,6 +59,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING) {
 	DriverObject->MajorFunction[IRP_MJ_CLOSE] = ProtectorCreateClose;
 	//DriverObject->MajorFunction[IRP_MJ_READ] = ProtectorRead;
 	DriverObject->MajorFunction[IRP_MJ_WRITE] = ProtectorWrite;
+	DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = ProtectorDeviceControl;
 
 	return status;
 }
@@ -121,13 +124,63 @@ NTSTATUS ProtectorWrite(PDEVICE_OBJECT, PIRP Irp) {
 			// Read user-mode data to kernel-space:
 			RtlInitUnicodeString(&PathToProtect, (PCWSTR)buffer);
 			count = PathToProtect.Length;
-			KdPrint((DRIVER_PREFIX "read %d bytes: %wZ", count, PathToProtect));
+			KdPrint((DRIVER_PREFIX "read %d bytes: %wZ\n", count, PathToProtect));
 		}
 	}
 
 	// Finish the request:
 	Irp->IoStatus.Status = status;
 	Irp->IoStatus.Information = count;
+	IoCompleteRequest(Irp, 0);
+	return status;
+}
+
+NTSTATUS ProtectorDeviceControl(PDEVICE_OBJECT, PIRP Irp) {
+	auto stack = IoGetCurrentIrpStackLocation(Irp);
+	auto& deviceIoControl = stack->Parameters.DeviceIoControl;
+
+	// Check if this is illegal IOCTL:
+	if (deviceIoControl.IoControlCode != IOCTL_PROTECTOR_SET_PATH)
+		return CompleteIrp(Irp, STATUS_INVALID_DEVICE_REQUEST);
+
+	// Check if the incoming buffer isn't correct:
+	if (deviceIoControl.InputBufferLength < sizeof(ProtectorPath))
+		return CompleteIrp(Irp, STATUS_BUFFER_TOO_SMALL);
+
+	// Print some data for tests:
+	auto buffer = (ProtectorPath*)Irp->AssociatedIrp.SystemBuffer;
+	auto userPath = buffer->Path;
+
+	// Convert path:
+	UNICODE_STRING path;
+	RtlInitUnicodeString(&path, (PCWSTR)userPath);
+
+	switch (buffer->Type)
+	{
+	case RequestType::Add:
+	{
+		KdPrint((DRIVER_PREFIX "Add path: %wZ\n", path));
+		break;
+	}
+	case RequestType::Remove:
+	{
+		KdPrint((DRIVER_PREFIX "Remove path: %wZ\n", path));
+		break;
+	}
+	default:
+		break;
+	}
+
+	// Complete the request:
+	return CompleteIrp(Irp, STATUS_SUCCESS);
+}
+
+/*
+* Helper function to return the IRP to the caller.
+*/
+NTSTATUS CompleteIrp(PIRP Irp, NTSTATUS status, ULONG_PTR info) {
+	Irp->IoStatus.Status = status;
+	Irp->IoStatus.Information = info;
 	IoCompleteRequest(Irp, 0);
 	return status;
 }
