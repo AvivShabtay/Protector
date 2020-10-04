@@ -14,7 +14,19 @@ Kernel driver to monitor execution of programs from paths defined to be avoided 
     sc start protector
 ```
 3. Use the Protector CLI - ToDO
+   * <code>ProtectorClient.exe -h</code> - get help information
+   * <code>ProtectorClient.exe -a \<path></code> - add new path
+   * <code>ProtectorClient.exe -r \<path></code> - remove existing path
+   * <code>ProtectorClient.exe -p </code> - get all defined paths
+   * <code>ProtectorClient.exe -e</code> - consume events from driver
+---
 
+### Example of running Protector
+<img src="imgs/protectorExample.jpg" width=700></img>
+* Protector driver have been loaded to kernel space and start running
+* ProtectorClient have been used to add path to protect from: "C:\TEMP"
+* Protector driver monitoring process executions
+* Protector have been blocking programs running from the blocked path
 ---
 
 ### Notes
@@ -23,11 +35,11 @@ Kernel driver to monitor execution of programs from paths defined to be avoided 
 ---
 
 ### ToDo
-- [ ] Add notification to processes
-- [ ] Search for execution for monitored paths
-- [ ] Add data structure to hold multiple paths
+- [X] Add notification to processes
+- [X] Search for execution for monitored paths
+- [X] Add data structure to hold multiple paths
 - [ ] Add data structure to hold event (attempts to run program from monitored path)
-- [ ] Add log using the Protector CLI
+- [ ] Update client application to support all the functionality
 
 ---
 
