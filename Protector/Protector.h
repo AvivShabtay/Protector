@@ -4,9 +4,6 @@
 #define DRIVER_PREFIX "Protector: "
 #define DRIVER_TAG 'Prtc'
 
-UNICODE_STRING PathToProtect;
-FastMutex Mutex;
-
 struct Globals {
 	LIST_ENTRY ItemsHead;
 	int ItemCount;

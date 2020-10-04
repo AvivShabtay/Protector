@@ -110,23 +110,6 @@ NTSTATUS ProtectorWrite(PDEVICE_OBJECT, PIRP Irp) {
 	auto status = STATUS_SUCCESS;
 	auto count = 0;
 
-	auto stack = IoGetCurrentIrpStackLocation(Irp);
-	auto len = stack->Parameters.Read.Length;
-	if (len == 0)
-		status = STATUS_INVALID_BUFFER_SIZE;
-	else {
-
-		auto buffer = MmGetSystemAddressForMdlSafe(Irp->MdlAddress, NormalPagePriority);
-		if (!buffer)
-			status = STATUS_INSUFFICIENT_RESOURCES;
-
-		else {
-			// Read user-mode data to kernel-space:
-			RtlInitUnicodeString(&PathToProtect, (PCWSTR)buffer);
-			count = PathToProtect.Length;
-			KdPrint((DRIVER_PREFIX "read %d bytes: %wZ\n", count, PathToProtect));
-		}
-	}
 
 	// Finish the request:
 	Irp->IoStatus.Status = status;
