@@ -30,3 +30,8 @@ Kernel driver to monitor execution of programs from paths defined to be avoided 
 - [ ] Add log using the Protector CLI
 
 ---
+
+### Useful links
+* OSR Windows Linked Lists tutorial - https://www.osronline.com/article.cfm%5Earticle=499.htm
+* DebugView not showing KdPrint output - https://stackoverflow.com/a/45627365
+* 

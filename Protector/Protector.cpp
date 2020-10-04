@@ -10,19 +10,22 @@ DRIVER_DISPATCH ProtectorRead;
 DRIVER_DISPATCH ProtectorWrite;
 DRIVER_DISPATCH ProtectorDeviceControl;
 NTSTATUS CompleteIrp(PIRP Irp, NTSTATUS status = STATUS_SUCCESS, ULONG_PTR info = 0);
+void PushItem(LIST_ENTRY* entry);
+void OnProcessNotify(_Inout_ PEPROCESS Process, _In_ HANDLE ProcessId, _Inout_opt_ PPS_CREATE_NOTIFY_INFO CreateInfo);
+bool CheckPathInBlackList(WCHAR* imageFileName);
+void ConvertWcharStringToUpperCase(WCHAR* source);
 
 // Global variables:
 Globals g_Globals;
 
 extern "C"
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING) {
-	UNREFERENCED_PARAMETER(DriverObject);
-	auto status = STATUS_SUCCESS;
 
-	// Define the device symbolic link:
+	auto status = STATUS_SUCCESS;
 	PDEVICE_OBJECT DeviceObject = nullptr;
 	UNICODE_STRING symLink = RTL_CONSTANT_STRING(L"\\??\\Protector");
 	bool symLinkCreated = false;
+	bool processCallbackRegistered = false;
 
 	// Initialize linked list for the events:
 	InitializeListHead(&g_Globals.ItemsHead);
@@ -50,6 +53,15 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING) {
 
 		symLinkCreated = true;
 
+		// Register callback function for process creation:
+		status = PsSetCreateProcessNotifyRoutineEx(OnProcessNotify, FALSE);
+		if (!NT_SUCCESS(status)) {
+			KdPrint((DRIVER_PREFIX "failed to register process callback (0x%08X)\n", status));
+			break;
+		}
+
+		processCallbackRegistered = true;
+
 	} while (false);
 
 	// In case of failure:
@@ -64,7 +76,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING) {
 	DriverObject->DriverUnload = ProtectorUnload;
 	DriverObject->MajorFunction[IRP_MJ_CREATE] = ProtectorCreateClose;
 	DriverObject->MajorFunction[IRP_MJ_CLOSE] = ProtectorCreateClose;
-	//DriverObject->MajorFunction[IRP_MJ_READ] = ProtectorRead;
+	DriverObject->MajorFunction[IRP_MJ_READ] = ProtectorRead;
 	DriverObject->MajorFunction[IRP_MJ_WRITE] = ProtectorWrite;
 	DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = ProtectorDeviceControl;
 
@@ -88,6 +100,9 @@ NTSTATUS ProtectorCreateClose(PDEVICE_OBJECT, PIRP Irp) {
 void ProtectorUnload(PDRIVER_OBJECT DriverObject) {
 	UNREFERENCED_PARAMETER(DriverObject);
 
+	// Remove the callback to the notification:
+	PsSetCreateProcessNotifyRoutineEx(OnProcessNotify, TRUE);
+
 	// Remove the symbolic link:
 	UNICODE_STRING symLink = RTL_CONSTANT_STRING(L"\\??\\Protector");
 	IoDeleteSymbolicLink(&symLink);
@@ -100,7 +115,6 @@ void ProtectorUnload(PDRIVER_OBJECT DriverObject) {
 		auto entry = RemoveHeadList(&g_Globals.ItemsHead);
 		ExFreePool(CONTAINING_RECORD(entry, FullItem<ProtectorPath>, Entry));
 	}
-}
 }
 
 /*
@@ -123,7 +137,6 @@ NTSTATUS ProtectorRead(PDEVICE_OBJECT, PIRP Irp) {
 NTSTATUS ProtectorWrite(PDEVICE_OBJECT, PIRP Irp) {
 	auto status = STATUS_SUCCESS;
 	auto count = 0;
-
 
 	// Finish the request:
 	Irp->IoStatus.Status = status;
@@ -204,6 +217,83 @@ NTSTATUS CompleteIrp(PIRP Irp, NTSTATUS status, ULONG_PTR info) {
 	return status;
 }
 
+/*
+*
+*/
+void OnProcessNotify(_Inout_ PEPROCESS Process, _In_ HANDLE ProcessId, _Inout_opt_ PPS_CREATE_NOTIFY_INFO CreateInfo) {
+	UNREFERENCED_PARAMETER(Process);
+
+	// Process creation notification:
+	if (CreateInfo) {
+
+		// Check if the created process contains ImgaeFileName field:
+		if (CreateInfo->FileOpenNameAvailable) {
+			auto imageFileName = CreateInfo->ImageFileName;
+			KdPrint((DRIVER_PREFIX "New process created, ImageFileName: %wZ\n", imageFileName));
+
+			// Use temporary string:
+			WCHAR imagePath[MaxPath];
+			::memset(imagePath, 0, MaxPath);
+			// There is no guarantee that a UNICODE_STRING will be NULL terminated.
+			// https://community.osr.com/discussion/243646/wcsstr-in-kernel
+			::wcsncpy(imagePath, CreateInfo->ImageFileName->Buffer, min(CreateInfo->ImageFileName->Length, MaxPath));
+			//::memcpy(imagePath, CreateInfo->ImageFileName->Buffer, min(CreateInfo->ImageFileName->Length, MaxPath));
+			ConvertWcharStringToUpperCase(imagePath);
+
+			// Check if the process path is black-listed:
+			if (CheckPathInBlackList(imagePath)) {
+
+				// The path is black-listed, block it:
+				CreateInfo->CreationStatus = STATUS_ACCESS_DENIED;
+
+				// Print log:
+				auto pid = HandleToULong(ProcessId);
+				KdPrint((DRIVER_PREFIX "blocked PID=%d, ImageFileName: %wZ\n", pid, imageFileName));
+			}
+		}
+	}
+}
+
+/*
+* Check if given path include in the black-listed list.
+*/
+bool CheckPathInBlackList(WCHAR* imagePath) {
+
+	AutoLock<FastMutex> lock(g_Globals.Mutex);
+
+	// Check if the linked list empty:
+	if (g_Globals.ItemCount <= 0)
+		return false;
+
+	// Iterate the linked-list:
+	PLIST_ENTRY pHead = &g_Globals.ItemsHead;
+	PLIST_ENTRY pEntry = pHead->Flink;
+
+	while (pEntry != pHead) {
+
+		// Get the item from the linked list:
+		auto item = CONTAINING_RECORD(pEntry, FullItem<ProtectorPath>, Entry);
+
+		auto blackListedpath = item->Data.Path;
+
+		// Avoid case of disabling every path by mistake:
+		size_t len1 = wcslen(blackListedpath);
+		size_t len2 = wcslen(imagePath);
+
+		if (len1 == 0 || len2 == 0)
+			return false;
+
+		// Black-listed path:
+		if (wcsstr(imagePath, blackListedpath))
+			return true;
+
+		// Move to the next list entry:
+		pEntry = pEntry->Flink;
+	}
+
+	return false;
+}
+
 
 /*
 *
@@ -222,4 +312,16 @@ void PushItem(LIST_ENTRY* entry) {
 	// Push item to the end of the list:
 	InsertTailList(&g_Globals.ItemsHead, entry);
 	g_Globals.ItemCount++;
+}
+
+/*
+*
+*/
+void ConvertWcharStringToUpperCase(WCHAR* source) {
+	auto len = wcslen(source);
+
+	for (int i = 0; i < len; i++) {
+		auto upperCase = ::RtlUpcaseUnicodeChar(source[i]);
+		::memcpy(source + i, &upperCase, 1);
+	}
 }

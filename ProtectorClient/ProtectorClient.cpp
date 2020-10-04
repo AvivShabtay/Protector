@@ -10,8 +10,8 @@ int Error(const char* text);
 
 int main() {
 
-	WCHAR path[] = L"C:\\Temp";
-	DWORD dwBytesRead;
+	WCHAR path[] = L"C:\\Test";
+	//DWORD dwBytesRead;
 	DWORD dwReturned;
 
 	// Acquire device to Sysmon driver:
@@ -23,9 +23,11 @@ int main() {
 
 
 	// Request protection from executing programs from specific path (using WRITE operation):
+	/*
 	if (!(::WriteFile(g_hProtectorDevice, path, sizeof(path), &dwBytesRead, nullptr))) {
 		return Error("Could not read data");
 	}
+	*/
 
 	// Setup data:
 	ProtectorPath protectorPath;
