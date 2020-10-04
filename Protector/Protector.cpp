@@ -11,6 +11,9 @@ DRIVER_DISPATCH ProtectorWrite;
 DRIVER_DISPATCH ProtectorDeviceControl;
 NTSTATUS CompleteIrp(PIRP Irp, NTSTATUS status = STATUS_SUCCESS, ULONG_PTR info = 0);
 
+// Global variables:
+Globals g_Globals;
+
 extern "C"
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING) {
 	UNREFERENCED_PARAMETER(DriverObject);
@@ -20,6 +23,10 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING) {
 	PDEVICE_OBJECT DeviceObject = nullptr;
 	UNICODE_STRING symLink = RTL_CONSTANT_STRING(L"\\??\\Protector");
 	bool symLinkCreated = false;
+
+	// Initialize linked list for the events:
+	InitializeListHead(&g_Globals.ItemsHead);
+	g_Globals.Mutex.Init();
 
 	do {
 
@@ -87,6 +94,13 @@ void ProtectorUnload(PDRIVER_OBJECT DriverObject) {
 
 	// Remove the device driver:
 	IoDeleteDevice(DriverObject->DeviceObject);
+
+	// Free allocated memory:
+	while (!IsListEmpty(&g_Globals.ItemsHead)) {
+		auto entry = RemoveHeadList(&g_Globals.ItemsHead);
+		ExFreePool(CONTAINING_RECORD(entry, FullItem<ProtectorPath>, Entry));
+	}
+}
 }
 
 /*
@@ -132,22 +146,44 @@ NTSTATUS ProtectorDeviceControl(PDEVICE_OBJECT, PIRP Irp) {
 
 	// Print some data for tests:
 	auto buffer = (ProtectorPath*)Irp->AssociatedIrp.SystemBuffer;
-	auto userPath = buffer->Path;
 
-	// Convert path:
-	UNICODE_STRING path;
-	RtlInitUnicodeString(&path, (PCWSTR)userPath);
+	// TODO: check if the buffer is valid (size, not-empty).
 
 	switch (buffer->Type)
 	{
 	case RequestType::Add:
 	{
-		KdPrint((DRIVER_PREFIX "Add path: %wZ\n", path));
+		// Allocating continuous memory for new item:
+		USHORT size = sizeof(FullItem<ProtectorPath>);
+		auto info = (FullItem<ProtectorPath>*)ExAllocatePoolWithTag(PagedPool, size, DRIVER_TAG);
+		if (info == nullptr) {
+			KdPrint((DRIVER_PREFIX "failed allocation\n"));
+			return CompleteIrp(Irp, STATUS_BUFFER_TOO_SMALL); //TODO: Change to the correct status !!!!
+		}
+
+		// Convert the path to upper case letters:
+		ConvertWcharStringToUpperCase(buffer->Path);
+
+		// Zero the entire structure:
+		::memset(info, 0, size);
+
+		// Copy data to the item:
+		auto& item = info->Data;
+		item.Type = buffer->Type;
+		::memset(item.Path, 0, MaxPath + 1);
+		::wcsncpy(item.Path, buffer->Path, min(wcslen(buffer->Path), MaxPath));
+		//::memcpy(item.Path, buffer->Path, min(wcslen(buffer->Path), MaxPath));
+
+		// Add item to the linked-list:
+		PushItem(&info->Entry);
+
+		KdPrint((DRIVER_PREFIX "Add path: %ws\n", (PCWSTR)item.Path));
+
 		break;
 	}
 	case RequestType::Remove:
 	{
-		KdPrint((DRIVER_PREFIX "Remove path: %wZ\n", path));
+		//KdPrint((DRIVER_PREFIX "Remove path: %wZ\n", path));
 		break;
 	}
 	default:
@@ -166,4 +202,24 @@ NTSTATUS CompleteIrp(PIRP Irp, NTSTATUS status, ULONG_PTR info) {
 	Irp->IoStatus.Information = info;
 	IoCompleteRequest(Irp, 0);
 	return status;
+}
+
+
+/*
+*
+*/
+void PushItem(LIST_ENTRY* entry) {
+	AutoLock<FastMutex> lock(g_Globals.Mutex);
+
+	// In case of too many items, we will remove the oldest item:
+	if (g_Globals.ItemCount > 1024) {
+		auto head = RemoveHeadList(&g_Globals.ItemsHead);
+		g_Globals.ItemCount--;
+		auto item = CONTAINING_RECORD(head, FullItem<ProtectorPath>, Entry);
+		ExFreePool(item);
+	}
+
+	// Push item to the end of the list:
+	InsertTailList(&g_Globals.ItemsHead, entry);
+	g_Globals.ItemCount++;
 }
