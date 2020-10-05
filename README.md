@@ -22,11 +22,12 @@ Kernel driver to monitor execution of programs from paths defined to be avoided 
 ---
 
 ### Example of running Protector
-<img src="imgs/protectorExample.jpg" width=700></img>
+<img src="imgs/protectorCLI.jpg" width=500></img>
+<img src="imgs/protectorExample.jpg" width=500></img>
 * Protector driver have been loaded to kernel space and start running
-* ProtectorClient have been used to add path to protect from: "C:\TEMP"
+* ProtectorClient have been used to add path to protect from: "C:\TEST"
 * Protector driver monitoring process executions
-* Protector have been blocking programs running from the blocked path
+* Protector have been blocking programs execution from the blocked path
 ---
 
 ### Notes
