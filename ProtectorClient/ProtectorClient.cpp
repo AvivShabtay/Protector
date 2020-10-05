@@ -1,5 +1,8 @@
 #include "pch.h"
 #include "../Protector/ProtectorCommon.h"
+#include <vector>
+#include <iostream>
+#include <string>
 
 // Global variables:
 HANDLE g_hProtectorDevice;
@@ -10,36 +13,43 @@ int Error(const char* text);
 bool ParseCommandLine(std::pair<std::wstring, std::wstring>& userInput, int argc, wchar_t** argv);
 void ShowUsage(std::wstring appName);
 
-int main() {
+int wmain(int argc, wchar_t* argv[]) {
 
-	WCHAR path[] = L"C:\\Test";
-	//DWORD dwBytesRead;
+	// Parse the user command line arguments:
+	std::pair<std::wstring, std::wstring> input;
+	if (!ParseCommandLine(input, argc, argv)) {
+		return -1;
+	}
+
 	DWORD dwReturned;
 
-	// Acquire device to Sysmon driver:
+	// Acquire device to Protector driver:
 	g_hProtectorDevice = CreateFile(L"\\\\.\\Protector", GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
 	if (g_hProtectorDevice == INVALID_HANDLE_VALUE) {
 		return Error("Could not get Protector device");
 	}
+
+	// Indicates successful handle to the device:
 	g_DeviceCreated = true;
 
+	// Do work:
+	if (input.first == L"-a") {
 
-	// Request protection from executing programs from specific path (using WRITE operation):
-	/*
-	if (!(::WriteFile(g_hProtectorDevice, path, sizeof(path), &dwBytesRead, nullptr))) {
-		return Error("Could not read data");
+		// Make sure the given path is legit,
+		// otherwise display error to the user
+
+		// Setup data:
+		ProtectorPath protectorPath;
+		::ZeroMemory(protectorPath.Path, MaxPath + 1);
+		protectorPath.Type = RequestType::Add;
+		wcscpy_s(protectorPath.Path, MaxPath + 1, input.second.c_str());
+
+		// Request protection from executing programs from specific path (using DEVICE_CONTROL operation):
+		if (!(::DeviceIoControl(g_hProtectorDevice, IOCTL_PROTECTOR_SET_PATH, &protectorPath, sizeof(protectorPath), nullptr, 0, &dwReturned, nullptr))) {
+			return Error("Could not commit device control request");
+		}
 	}
-	*/
 
-	// Setup data:
-	ProtectorPath protectorPath;
-	protectorPath.Type = RequestType::Add;
-	wcscpy_s(protectorPath.Path, sizeof(path), path);
-
-	// Request protection from executing programs from specific path (using DEVICE_CONTROL operation):
-	if (!(::DeviceIoControl(g_hProtectorDevice, IOCTL_PROTECTOR_SET_PATH, &protectorPath, sizeof(protectorPath), nullptr, 0, &dwReturned, nullptr))) {
-		return Error("Could not commit device control request");
-	}
 
 	CloseHandle(g_hProtectorDevice);
 }
