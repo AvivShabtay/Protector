@@ -205,7 +205,7 @@ NTSTATUS ProtectorDeviceControl(PDEVICE_OBJECT, PIRP Irp) {
 
 	// Run the corresponding handler for the request:
 	switch (controlCode) {
-	case IOCTL_PROTECTOR_SET_PATH:
+	case IOCTL_PROTECTOR_ADD_PATH:
 		status = AddPathHandler(Irp, stack);
 		break;
 

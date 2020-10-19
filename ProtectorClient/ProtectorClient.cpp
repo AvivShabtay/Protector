@@ -45,7 +45,7 @@ int wmain(int argc, wchar_t* argv[]) {
 		wcscpy_s(protectorPath.Path, MaxPath + 1, input.second.c_str());
 
 		// Request protection from executing programs from specific path (using DEVICE_CONTROL operation):
-		if (!(::DeviceIoControl(g_hProtectorDevice, IOCTL_PROTECTOR_SET_PATH, &protectorPath, sizeof(protectorPath), nullptr, 0, &dwReturned, nullptr))) {
+		if (!(::DeviceIoControl(g_hProtectorDevice, IOCTL_PROTECTOR_ADD_PATH, &protectorPath, sizeof(protectorPath), nullptr, 0, &dwReturned, nullptr))) {
 			return Error("Could not commit device control request");
 		}
 	}
