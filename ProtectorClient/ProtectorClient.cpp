@@ -32,7 +32,7 @@ int wmain(int argc, wchar_t* argv[]) {
 	// Indicates successful handle to the device:
 	g_DeviceCreated = true;
 
-	// Do work:
+	// Adding path to block:
 	if (input.first == L"-a") {
 
 		// Make sure the given path is legit,
@@ -50,6 +50,22 @@ int wmain(int argc, wchar_t* argv[]) {
 		}
 	}
 
+	// Remove blocked path:
+	else if (input.first == L"-r") {
+		// Make sure the given path is legit,
+		// otherwise display error to the user
+
+		// Setup data:
+		ProtectorPath protectorPath;
+		::ZeroMemory(protectorPath.Path, MaxPath + 1);
+		protectorPath.Type = RequestType::Remove;
+		wcscpy_s(protectorPath.Path, MaxPath + 1, input.second.c_str());
+
+		// Request protection from executing programs from specific path (using DEVICE_CONTROL operation):
+		if (!(::DeviceIoControl(g_hProtectorDevice, IOCTL_PROTECTOR_REMOVE_PATH, &protectorPath, sizeof(protectorPath), nullptr, 0, &dwReturned, nullptr))) {
+			return Error("Could not commit device control request");
+		}
+	}
 
 	CloseHandle(g_hProtectorDevice);
 }

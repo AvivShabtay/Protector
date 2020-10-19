@@ -12,9 +12,10 @@ DRIVER_DISPATCH ProtectorDeviceControl;
 NTSTATUS CompleteIrp(PIRP Irp, NTSTATUS status = STATUS_SUCCESS, ULONG_PTR info = 0);
 void PushItem(LIST_ENTRY* entry);
 void OnProcessNotify(_Inout_ PEPROCESS Process, _In_ HANDLE ProcessId, _Inout_opt_ PPS_CREATE_NOTIFY_INFO CreateInfo);
-bool CheckPathInBlackList(WCHAR* imageFileName);
+PLIST_ENTRY CheckPathInBlackList(WCHAR* imagePath);
 void ConvertWcharStringToUpperCase(WCHAR* source);
 NTSTATUS AddPathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation);
+NTSTATUS RemovePathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation);
 
 // Global variables:
 Globals g_Globals;
@@ -147,7 +148,7 @@ NTSTATUS ProtectorWrite(PDEVICE_OBJECT, PIRP Irp) {
 }
 
 /*
-* Add handler for add path requests.
+* Handler for add path requests.
 */
 NTSTATUS AddPathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation) {
 	auto& deviceIoControl = StackLocation->Parameters.DeviceIoControl;
@@ -192,6 +193,39 @@ NTSTATUS AddPathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation) {
 }
 
 /*
+* Handler for remove path requests.
+*/
+NTSTATUS RemovePathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation) {
+	auto& deviceIoControl = StackLocation->Parameters.DeviceIoControl;
+
+	// Check if the incoming buffer isn't correct:
+	if (deviceIoControl.InputBufferLength < sizeof(ProtectorPath))
+		return STATUS_BUFFER_TOO_SMALL;
+
+	// Get data from the request:
+	auto buffer = (ProtectorPath*)Irp->AssociatedIrp.SystemBuffer;
+	if (buffer->Type != RequestType::Remove)
+		return STATUS_INVALID_DEVICE_REQUEST;
+
+	// Convert the path to upper case letters:
+	ConvertWcharStringToUpperCase(buffer->Path);
+
+	// Get pointer to the item with that path:
+	auto pEntry = CheckPathInBlackList(buffer->Path);
+
+	// If the path exist, remove it:
+	if (pEntry) {
+		RemoveEntryList(pEntry);
+		KdPrint((DRIVER_PREFIX "Remove path: %ws\n", (PCWSTR)buffer->Path));
+		ExFreePool(CONTAINING_RECORD(pEntry, FullItem<ProtectorPath>, Entry));
+		return STATUS_SUCCESS;
+	}
+
+	// Complete the request:
+	return STATUS_INVALID_DEVICE_REQUEST;
+}
+
+/*
 * Dispatch function for device control I\O requests.
 */
 NTSTATUS ProtectorDeviceControl(PDEVICE_OBJECT, PIRP Irp) {
@@ -207,6 +241,10 @@ NTSTATUS ProtectorDeviceControl(PDEVICE_OBJECT, PIRP Irp) {
 	switch (controlCode) {
 	case IOCTL_PROTECTOR_ADD_PATH:
 		status = AddPathHandler(Irp, stack);
+		break;
+
+	case IOCTL_PROTECTOR_REMOVE_PATH:
+		status = RemovePathHandler(Irp, stack);
 		break;
 
 	default:
@@ -268,7 +306,7 @@ void OnProcessNotify(_Inout_ PEPROCESS Process, _In_ HANDLE ProcessId, _Inout_op
 /*
 * Check if given path include in the black-listed list.
 */
-bool CheckPathInBlackList(WCHAR* imagePath) {
+PLIST_ENTRY CheckPathInBlackList(WCHAR* imagePath) {
 
 	AutoLock<FastMutex> lock(g_Globals.Mutex);
 
@@ -296,13 +334,13 @@ bool CheckPathInBlackList(WCHAR* imagePath) {
 
 		// Black-listed path:
 		if (wcsstr(imagePath, blackListedpath))
-			return true;
+			return pEntry;
 
 		// Move to the next list entry:
 		pEntry = pEntry->Flink;
 	}
 
-	return false;
+	return nullptr;
 }
 
 
