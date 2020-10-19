@@ -14,6 +14,7 @@ void PushItem(LIST_ENTRY* entry);
 void OnProcessNotify(_Inout_ PEPROCESS Process, _In_ HANDLE ProcessId, _Inout_opt_ PPS_CREATE_NOTIFY_INFO CreateInfo);
 bool CheckPathInBlackList(WCHAR* imageFileName);
 void ConvertWcharStringToUpperCase(WCHAR* source);
+NTSTATUS AddPathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation);
 
 // Global variables:
 Globals g_Globals;
@@ -145,66 +146,76 @@ NTSTATUS ProtectorWrite(PDEVICE_OBJECT, PIRP Irp) {
 	return status;
 }
 
-NTSTATUS ProtectorDeviceControl(PDEVICE_OBJECT, PIRP Irp) {
-	auto stack = IoGetCurrentIrpStackLocation(Irp);
-	auto& deviceIoControl = stack->Parameters.DeviceIoControl;
-
-	// Check if this is illegal IOCTL:
-	if (deviceIoControl.IoControlCode != IOCTL_PROTECTOR_SET_PATH)
-		return CompleteIrp(Irp, STATUS_INVALID_DEVICE_REQUEST);
+/*
+* Add handler for add path requests.
+*/
+NTSTATUS AddPathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation) {
+	auto& deviceIoControl = StackLocation->Parameters.DeviceIoControl;
 
 	// Check if the incoming buffer isn't correct:
 	if (deviceIoControl.InputBufferLength < sizeof(ProtectorPath))
-		return CompleteIrp(Irp, STATUS_BUFFER_TOO_SMALL);
+		return STATUS_BUFFER_TOO_SMALL;
 
-	// Print some data for tests:
+	// Get data from the request:
 	auto buffer = (ProtectorPath*)Irp->AssociatedIrp.SystemBuffer;
+	if (buffer->Type != RequestType::Add)
+		return STATUS_INVALID_DEVICE_REQUEST;
 
-	// TODO: check if the buffer is valid (size, not-empty).
-
-	switch (buffer->Type)
-	{
-	case RequestType::Add:
-	{
-		// Allocating continuous memory for new item:
-		USHORT size = sizeof(FullItem<ProtectorPath>);
-		auto info = (FullItem<ProtectorPath>*)ExAllocatePoolWithTag(PagedPool, size, DRIVER_TAG);
-		if (info == nullptr) {
-			KdPrint((DRIVER_PREFIX "failed allocation\n"));
-			return CompleteIrp(Irp, STATUS_BUFFER_TOO_SMALL); //TODO: Change to the correct status !!!!
-		}
-
-		// Convert the path to upper case letters:
-		ConvertWcharStringToUpperCase(buffer->Path);
-
-		// Zero the entire structure:
-		::memset(info, 0, size);
-
-		// Copy data to the item:
-		auto& item = info->Data;
-		item.Type = buffer->Type;
-		::memset(item.Path, 0, MaxPath + 1);
-		::wcsncpy(item.Path, buffer->Path, min(wcslen(buffer->Path), MaxPath));
-		//::memcpy(item.Path, buffer->Path, min(wcslen(buffer->Path), MaxPath));
-
-		// Add item to the linked-list:
-		PushItem(&info->Entry);
-
-		KdPrint((DRIVER_PREFIX "Add path: %ws\n", (PCWSTR)item.Path));
-
-		break;
+	// Allocating continuous memory for new item:
+	USHORT size = sizeof(FullItem<ProtectorPath>);
+	auto info = (FullItem<ProtectorPath>*)ExAllocatePoolWithTag(PagedPool, size, DRIVER_TAG);
+	if (info == nullptr) {
+		KdPrint((DRIVER_PREFIX "failed allocation\n"));
+		//TODO: Change to the correct status !!!!
+		return STATUS_BUFFER_TOO_SMALL;
 	}
-	case RequestType::Remove:
-	{
-		//KdPrint((DRIVER_PREFIX "Remove path: %wZ\n", path));
+
+	// Convert the path to upper case letters:
+	ConvertWcharStringToUpperCase(buffer->Path);
+
+	// Zero the entire structure:
+	::memset(info, 0, size);
+
+	// Copy data to the item:
+	auto& item = info->Data;
+	item.Type = buffer->Type;
+	::memset(item.Path, 0, MaxPath + 1);
+	::wcsncpy(item.Path, buffer->Path, min(wcslen(buffer->Path), MaxPath));
+
+	// Add item to the linked-list:
+	PushItem(&info->Entry);
+
+	KdPrint((DRIVER_PREFIX "Add path: %ws\n", (PCWSTR)item.Path));
+
+	// Complete the request:
+	return STATUS_SUCCESS;
+}
+
+/*
+* Dispatch function for device control I\O requests.
+*/
+NTSTATUS ProtectorDeviceControl(PDEVICE_OBJECT, PIRP Irp) {
+	auto stack = IoGetCurrentIrpStackLocation(Irp);
+	auto controlCode = stack->Parameters.DeviceIoControl.IoControlCode;
+	auto status = STATUS_NOT_SUPPORTED;
+
+	// Check for valid IRP:
+	if (!Irp)
+		return CompleteIrp(Irp, STATUS_NOT_SUPPORTED);
+
+	// Run the corresponding handler for the request:
+	switch (controlCode) {
+	case IOCTL_PROTECTOR_SET_PATH:
+		status = AddPathHandler(Irp, stack);
 		break;
-	}
+
 	default:
+		status = STATUS_INVALID_DEVICE_REQUEST;
 		break;
 	}
 
 	// Complete the request:
-	return CompleteIrp(Irp, STATUS_SUCCESS);
+	return CompleteIrp(Irp, status);
 }
 
 /*
