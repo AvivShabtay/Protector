@@ -61,7 +61,7 @@ int wmain(int argc, wchar_t* argv[]) {
 		protectorPath.Type = RequestType::Remove;
 		wcscpy_s(protectorPath.Path, MaxPath + 1, input.second.c_str());
 
-		// Request protection from executing programs from specific path (using DEVICE_CONTROL operation):
+		// Request remove protection of specific path (using DEVICE_CONTROL operation):
 		if (!(::DeviceIoControl(g_hProtectorDevice, IOCTL_PROTECTOR_REMOVE_PATH, &protectorPath, sizeof(protectorPath), nullptr, 0, &dwReturned, nullptr))) {
 			return Error("Could not commit device control request");
 		}
@@ -73,12 +73,40 @@ int wmain(int argc, wchar_t* argv[]) {
 		// Setup data:
 		int length = 0;
 
-		// Request protection from executing programs from specific path (using DEVICE_CONTROL operation):
+		// Request the number of blocked path (using DEVICE_CONTROL operation):
 		if (!(::DeviceIoControl(g_hProtectorDevice, IOCTL_PROTECTOR_GET_PATHS_LEN, nullptr, 0, &length, sizeof(int), &dwReturned, nullptr))) {
 			return Error("Could not commit device control request");
 		}
 
-		printf("The number of defined paths is: %d\n", length);
+		if (length == 0) {
+			printf("There are no blocked paths available yet\n");
+			return -1;
+		}
+
+		printf("Number of blocked paths: %d\n", length);
+
+		auto bufferSize = length * sizeof(ProtectorPath);
+
+		// Buffer for incoming data:
+		ProtectorPath* buffer = (ProtectorPath*)::HeapAlloc(::GetProcessHeap(), HEAP_ZERO_MEMORY, bufferSize);
+		if (!buffer) {
+			return Error("Could not allocate memory for incoming paths");
+		}
+
+		// Request blocked paths available (using DEVICE_CONTROL operation):
+		if (!(::DeviceIoControl(g_hProtectorDevice, IOCTL_PROTECTOR_GET_PATHS, nullptr, 0, buffer, bufferSize, &dwReturned, nullptr))) {
+			::HeapFree(::GetProcessHeap(), HEAP_NO_SERIALIZE, buffer);
+			return Error("Could not commit device control request");
+		}
+
+		for (ProtectorPath* path = buffer;
+			path < buffer + length;
+			path++)
+		{
+			printf("Blocked Path: %ws\n", path->Path);
+		}
+
+		::HeapFree(::GetProcessHeap(), HEAP_NO_SERIALIZE, buffer);
 	}
 
 	CloseHandle(g_hProtectorDevice);

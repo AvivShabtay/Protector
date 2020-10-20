@@ -17,6 +17,7 @@ void ConvertWcharStringToUpperCase(WCHAR* source);
 NTSTATUS AddPathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation);
 NTSTATUS RemovePathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation);
 NTSTATUS GetPathListLengthHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation);
+NTSTATUS GetPathsHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation);
 
 // Global variables:
 Globals g_Globals;
@@ -245,7 +246,49 @@ NTSTATUS GetPathListLengthHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLo
 
 	if (buffer) {
 		*buffer = g_Globals.ItemCount;
-		return STATUS_INSUFFICIENT_RESOURCES;
+		return STATUS_SUCCESS;
+	}
+
+	return STATUS_INVALID_DEVICE_REQUEST;
+}
+
+/*
+* Handler for get paths requests.
+*/
+NTSTATUS GetPathsHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation) {
+	auto& deviceIoControl = StackLocation->Parameters.DeviceIoControl;
+
+	// Check if the incoming buffer isn't correct:
+	if (deviceIoControl.OutputBufferLength < sizeof(ProtectorPath))
+		return STATUS_BUFFER_TOO_SMALL;
+
+	// Get data from the request:
+	auto buffer = (UCHAR*)MmGetSystemAddressForMdlSafe(Irp->MdlAddress, NormalPagePriority);
+
+	if (buffer) {
+		AutoLock<FastMutex> lock(g_Globals.Mutex);
+
+		auto size = g_Globals.ItemCount;
+		if (size <= 0)
+			return STATUS_SUCCESS;
+
+		// Iterate the linked-list:
+		PLIST_ENTRY pHead = &g_Globals.ItemsHead;
+		PLIST_ENTRY pEntry = pHead->Flink;
+
+		while (pEntry != pHead) {
+			// Get the item from the linked list:
+			auto item = CONTAINING_RECORD(pEntry, FullItem<ProtectorPath>, Entry);
+
+			// Copy data to user buffer:
+			::memcpy(buffer, &item->Data, sizeof(ProtectorPath));
+
+			// Move to the next list entry:
+			pEntry = pEntry->Flink;
+			buffer += sizeof(ProtectorPath);
+		}
+
+		return STATUS_SUCCESS;
 	}
 
 	return STATUS_INVALID_DEVICE_REQUEST;
@@ -275,6 +318,10 @@ NTSTATUS ProtectorDeviceControl(PDEVICE_OBJECT, PIRP Irp) {
 
 	case IOCTL_PROTECTOR_GET_PATHS_LEN:
 		status = GetPathListLengthHandler(Irp, stack);
+		break;
+
+	case IOCTL_PROTECTOR_GET_PATHS:
+		status = GetPathsHandler(Irp, stack);
 		break;
 
 	default:
