@@ -215,9 +215,13 @@ NTSTATUS RemovePathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation)
 
 	// If the path exist, remove it:
 	if (pEntry) {
+		AutoLock<FastMutex> lock(g_Globals.Mutex);
+
 		RemoveEntryList(pEntry);
 		KdPrint((DRIVER_PREFIX "Remove path: %ws\n", (PCWSTR)buffer->Path));
 		ExFreePool(CONTAINING_RECORD(pEntry, FullItem<ProtectorPath>, Entry));
+
+		g_Globals.ItemCount--;
 		return STATUS_SUCCESS;
 	}
 
