@@ -16,6 +16,7 @@ PLIST_ENTRY CheckPathInBlackList(WCHAR* imagePath);
 void ConvertWcharStringToUpperCase(WCHAR* source);
 NTSTATUS AddPathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation);
 NTSTATUS RemovePathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation);
+NTSTATUS GetPathListLengthHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation);
 
 // Global variables:
 Globals g_Globals;
@@ -230,6 +231,27 @@ NTSTATUS RemovePathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation)
 }
 
 /*
+* Handler for path list length requests.
+*/
+NTSTATUS GetPathListLengthHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation) {
+	auto& deviceIoControl = StackLocation->Parameters.DeviceIoControl;
+
+	// Check if the incoming buffer isn't correct:
+	if (deviceIoControl.OutputBufferLength < sizeof(ULONG))
+		return STATUS_BUFFER_TOO_SMALL;
+
+	// Get data from the request:
+	auto buffer = (int*)MmGetSystemAddressForMdlSafe(Irp->MdlAddress, NormalPagePriority);
+
+	if (buffer) {
+		*buffer = g_Globals.ItemCount;
+		return STATUS_INSUFFICIENT_RESOURCES;
+	}
+
+	return STATUS_INVALID_DEVICE_REQUEST;
+}
+
+/*
 * Dispatch function for device control I\O requests.
 */
 NTSTATUS ProtectorDeviceControl(PDEVICE_OBJECT, PIRP Irp) {
@@ -249,6 +271,10 @@ NTSTATUS ProtectorDeviceControl(PDEVICE_OBJECT, PIRP Irp) {
 
 	case IOCTL_PROTECTOR_REMOVE_PATH:
 		status = RemovePathHandler(Irp, stack);
+		break;
+
+	case IOCTL_PROTECTOR_GET_PATHS_LEN:
+		status = GetPathListLengthHandler(Irp, stack);
 		break;
 
 	default:

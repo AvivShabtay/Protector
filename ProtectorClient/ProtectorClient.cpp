@@ -67,6 +67,20 @@ int wmain(int argc, wchar_t* argv[]) {
 		}
 	}
 
+	// Get all the user defined paths:
+	else if (input.first == L"-p") {
+
+		// Setup data:
+		int length = 0;
+
+		// Request protection from executing programs from specific path (using DEVICE_CONTROL operation):
+		if (!(::DeviceIoControl(g_hProtectorDevice, IOCTL_PROTECTOR_GET_PATHS_LEN, nullptr, 0, &length, sizeof(int), &dwReturned, nullptr))) {
+			return Error("Could not commit device control request");
+		}
+
+		printf("The number of defined paths is: %d\n", length);
+	}
+
 	CloseHandle(g_hProtectorDevice);
 }
 
