@@ -17,6 +17,7 @@
 const int MaxPath = 300;
 
 enum class RequestType : short {
+	Undefined = 0,
 	Add,
 	Remove
 };
