@@ -14,11 +14,12 @@ public:
 
 	const char* what() const override;
 
-	// delete copy ctor, move ctor, assignment
-	//Win32ErrorCodeException(const Win32ErrorCodeException&) = delete;
-	//Win32ErrorCodeException& operator=(const Win32ErrorCodeException&) = delete;
-	//Win32ErrorCodeException(Win32ErrorCodeException&&) = delete;
-	//Win32ErrorCodeException& operator=(Win32ErrorCodeException&&) = delete;
+	// Delete copy constructor & assignment operator
+	// @note std::exception using the move constructor when throwing exception.
+	Win32ErrorCodeException(const Win32ErrorCodeException&) = delete;
+	Win32ErrorCodeException& operator=(const Win32ErrorCodeException&) = delete;
+	Win32ErrorCodeException(Win32ErrorCodeException&&) = default;
+	Win32ErrorCodeException& operator=(Win32ErrorCodeException&&) = default;
 
 	/* Get Windows last error code. */
 	DWORD getErrorCode() const;
