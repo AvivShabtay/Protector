@@ -9,20 +9,21 @@ Win32ErrorCodeException::Win32ErrorCodeException(const std::string& errorMessage
 	: std::runtime_error(errorMessage), m_errorCode(0)
 {
 	this->m_errorCode = GetLastError();
-	this->m_winErrorMessage = this->getLastErrorMessage();
+	this->m_winErrorMessage = Win32ErrorCodeException::getLastErrorMessage();
+
+	std::stringstream messageStream;
+	messageStream << "[-] ";
+	messageStream << std::runtime_error::what();
+	messageStream << "\n[-] Windows last error code: 0x";
+	messageStream << std::hex << this->m_errorCode;
+	messageStream << "\n[-] Windows error message: ";
+	messageStream << this->m_winErrorMessage;
+	this->m_errorMessage = messageStream.str();
 }
 
 const char* Win32ErrorCodeException::what() const
 {
-	std::stringstream messageStream;
-
-	messageStream << "\n\tWindows last error code: 0x";
-	messageStream << std::hex << this->m_errorCode;
-	messageStream << "\n\tWindows error message: ";
-	messageStream << this->m_winErrorMessage;
-
-	return std::string(messageStream.str()).c_str();
-	//return messageStream.str().c_str();
+	return this->m_errorMessage.c_str();
 }
 
 
@@ -36,7 +37,7 @@ std::string Win32ErrorCodeException::getWinErrorMessage() const
 	return this->m_winErrorMessage;
 }
 
-std::string Win32ErrorCodeException::getLastErrorMessage() const
+std::string Win32ErrorCodeException::getLastErrorMessage()
 {
 	const DWORD errorCode = GetLastError();
 	if (0 == errorCode)
@@ -51,18 +52,4 @@ std::string Win32ErrorCodeException::getLastErrorMessage() const
 		0, &message[0], MESSAGE_SIZE, nullptr);
 
 	return std::string(CW2A(message.data()));
-}
-
-std::string Win32ErrorCodeException::init(const std::string& errorMessage)
-{
-	std::ostringstream messageStream;
-
-	messageStream << "\n\tWindows last error code: 0x";
-	messageStream << std::hex << GetLastError();
-	messageStream << "\n\tWindows error message: ";
-	messageStream << this->getLastErrorMessage();
-
-	return std::string(messageStream.str()).c_str();
-	//return messageStream.str().c_str();
-	//return messageStream.str();
 }

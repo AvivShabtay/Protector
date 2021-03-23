@@ -47,7 +47,7 @@ int wmain(int argc, wchar_t* argv[]) {
 	}
 	catch (std::exception& exception)
 	{
-		std::cout << "[Error]" << exception.what() << std::endl;
+		std::cout << exception.what() << std::endl;
 		return 1;
 	}
 

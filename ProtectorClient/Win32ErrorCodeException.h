@@ -28,10 +28,9 @@ public:
 	std::string getWinErrorMessage() const;
 
 protected:
-	std::string getLastErrorMessage() const;
-
-	std::string init(const std::string& errorMessage);
+	static std::string getLastErrorMessage();
 
 	DWORD m_errorCode;
 	std::string m_winErrorMessage;
+	std::string m_errorMessage;
 };
