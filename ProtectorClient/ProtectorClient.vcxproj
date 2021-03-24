@@ -151,12 +151,20 @@
     <ClCompile Include="AutoHandle.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="ProtectorClient.cpp" />
+    <ClCompile Include="PeResource.cpp" />
     <ClCompile Include="Win32ErrorCodeException.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AutoHandle.h" />
     <ClInclude Include="ProtectorClient.h" />
+    <ClInclude Include="PeResource.h" />
     <ClInclude Include="Win32ErrorCodeException.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\x64\Debug\Protector.sys" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="ProtectorClient.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

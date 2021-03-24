@@ -27,6 +27,9 @@
     <ClCompile Include="ProtectorClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PeResource.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AutoHandle.h">
@@ -38,5 +41,16 @@
     <ClInclude Include="ProtectorClient.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PeResource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\x64\Debug\Protector.sys" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="ProtectorClient.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>
