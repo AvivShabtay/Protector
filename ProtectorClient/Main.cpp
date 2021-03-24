@@ -1,10 +1,14 @@
 #include "ProtectorClient.h"
+#include "PeResource.h"
 
 #include <iostream>
 
 // Define helpers:
 bool parseCommandLine(std::pair<std::wstring, std::wstring>& userInput, int argc, wchar_t** argv);
 void showUsage(const std::wstring& appName);
+
+const int IDR_PROTECTOR_DRIVER1 = 101;
+const std::wstring RESOURCE_NAME = L"PROTECTOR_DRIVER";
 
 int wmain(int argc, wchar_t* argv[]) {
 
@@ -72,6 +76,11 @@ bool parseCommandLine(std::pair<std::wstring, std::wstring>& input, int argc, wc
 			return false;
 		}
 
+		if ((arg == L"-i") || (arg == L"--install")) {
+			input.first = arg;
+			return true;
+		}
+
 		if ((arg == L"-a") || (arg == L"--append")) {
 			if (i + 1 < argc) {
 				input.first = arg;
@@ -116,6 +125,7 @@ void showUsage(const std::wstring& appName) {
 	std::wcerr << "Usage: " << appName << " [option(s)]\n"
 		<< "Options:\n"
 		<< "\t-h,--help\t\tShow this help message\n"
+		<< "\t-i,--install\t\tDump Protector.sys and load it\n"
 		<< "\t-a,--append <PATH>\tSpecify path to protect from\n"
 		<< "\t-r,--remove <PATH>\tSpecify path to remove from protection\n"
 		<< "\t-p,--paths \t\tShow all the defined paths\n"
