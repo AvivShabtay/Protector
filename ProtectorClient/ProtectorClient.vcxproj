@@ -160,6 +160,12 @@
     <ClInclude Include="PeResource.h" />
     <ClInclude Include="Win32ErrorCodeException.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\x64\Debug\Protector.sys" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="ProtectorClient.rc" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
