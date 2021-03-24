@@ -47,4 +47,10 @@ Kernel driver to monitor execution of programs from paths defined to be avoided 
 ### Useful links
 * OSR Windows Linked Lists tutorial - https://www.osronline.com/article.cfm%5Earticle=499.htm
 * DebugView not showing KdPrint output - https://stackoverflow.com/a/45627365
-* 
+---
+
+
+### Common issues
+#### Resource file opened in another editor
+When using `Resource View` in `Visual Studio` you can get this error sometimes. <br>
+I used `Notepad++` to open the file from the local folder and then try to open the `Resource View` again and it fixed the problem.
