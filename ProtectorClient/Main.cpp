@@ -1,14 +1,25 @@
 #include "ProtectorClient.h"
 #include "PeResource.h"
+#include "ServiceManager.h"
+#include "Win32ErrorCodeException.h"
 
 #include <iostream>
+#include <sstream>
+
+#include <Psapi.h>
+#include <Windows.h>
 
 // Define helpers:
 bool parseCommandLine(std::pair<std::wstring, std::wstring>& userInput, int argc, wchar_t** argv);
 void showUsage(const std::wstring& appName);
+std::wstring getTempDirectoryPath();
+std::wstring createTemporaryPath(const std::wstring& exeNameWithExtension);
 
-const int IDR_PROTECTOR_DRIVER1 = 101;
-const std::wstring RESOURCE_NAME = L"PROTECTOR_DRIVER";
+const int PROTECTOR_DRIVER_RESOURCE_ID = 101;
+const std::wstring RESOURCE_NAME(L"PROTECTOR_DRIVER");
+const std::wstring DRIVER_NAME_WITH_EXTENSION(L"Protector.sys");
+const std::wstring SERVICE_NAME(L"Protector");
+const std::uint32_t SERVICE_TYPE = SERVICE_KERNEL_DRIVER;
 
 int wmain(int argc, wchar_t* argv[]) {
 
@@ -21,14 +32,44 @@ int wmain(int argc, wchar_t* argv[]) {
 
 	try
 	{
-		const ProtectorClient protectorClient;
+		// Loading Protector driver:
+		if (input.first == L"-i")
+		{
+			const PeResource resource(PROTECTOR_DRIVER_RESOURCE_ID, RESOURCE_NAME);
+
+			const std::wstring binPath(createTemporaryPath(DRIVER_NAME_WITH_EXTENSION));
+			resource.saveResourceToFileSystem(binPath);
+			std::wcout << "[+] Dump Protector.sys to: " << binPath << std::endl;
+
+			ServiceManager serviceManager(SERVICE_NAME, binPath, SERVICE_TYPE);
+			serviceManager.installAndStart();
+			std::wcout << "[+] Install Protector driver successfully" << std::endl;
+		}
+
+		// Unloading Protector driver:
+		else if (input.first == L"-s")
+		{
+			const std::wstring binPath(createTemporaryPath(DRIVER_NAME_WITH_EXTENSION));
+
+			ServiceManager serviceManager(SERVICE_NAME, binPath, SERVICE_TYPE);
+			serviceManager.stopAndRemove();
+			std::wcout << "[+] Unloading Protector driver successfully" << std::endl;
+
+			if (!DeleteFile(binPath.c_str()))
+			{
+				throw Win32ErrorCodeException("Could not delete Protector.sys file");
+			}
+			std::wcout << "[+] Remove Protector driver successfully" << std::endl;
+		}
 
 		// Adding path to block:
-		if (input.first == L"-a")
+		else if (input.first == L"-a")
 		{
 			// TODO: Make sure the given path is legit, otherwise display error to the user
 
+			const ProtectorClient protectorClient;
 			protectorClient.addPath(input.second);
+			std::wcout << "[+] Add protection against executing programs from: " << input.second << std::endl;
 		}
 
 		// Remove blocked path:
@@ -36,12 +77,15 @@ int wmain(int argc, wchar_t* argv[]) {
 		{
 			// TODO: Make sure the given path is legit, otherwise display error to the user
 
+			const ProtectorClient protectorClient;
 			protectorClient.removePath(input.second);
+			std::wcout << "[+] Remove protection against executing programs from: " << input.second << std::endl;
 		}
 
 		// Get all the user defined paths:
 		else if (input.first == L"-p")
 		{
+			const ProtectorClient protectorClient;
 			std::vector<std::wstring> paths = protectorClient.getAllPaths();
 			for (auto& path : paths)
 			{
@@ -77,6 +121,11 @@ bool parseCommandLine(std::pair<std::wstring, std::wstring>& input, int argc, wc
 		}
 
 		if ((arg == L"-i") || (arg == L"--install")) {
+			input.first = arg;
+			return true;
+		}
+
+		if ((arg == L"-s") || (arg == L"--stop")) {
 			input.first = arg;
 			return true;
 		}
@@ -126,9 +175,31 @@ void showUsage(const std::wstring& appName) {
 		<< "Options:\n"
 		<< "\t-h,--help\t\tShow this help message\n"
 		<< "\t-i,--install\t\tDump Protector.sys and load it\n"
+		<< "\t-s,--stop\t\tStop Protector driver, unload it and cleanup the executable\n"
 		<< "\t-a,--append <PATH>\tSpecify path to protect from\n"
 		<< "\t-r,--remove <PATH>\tSpecify path to remove from protection\n"
 		<< "\t-p,--paths \t\tShow all the defined paths\n"
 		<< "\t-e,--events \t\tShow event of blocked execution\n"
 		<< std::endl;
+}
+
+std::wstring getTempDirectoryPath()
+{
+	std::vector<WCHAR> tempDirectoryPath(MAX_PATH);
+	if (!GetTempPath(MAX_PATH, tempDirectoryPath.data()))
+	{
+		throw Win32ErrorCodeException("Could not get the temp directory path");
+	}
+
+	return tempDirectoryPath.data();
+}
+
+std::wstring createTemporaryPath(const std::wstring& exeNameWithExtension)
+{
+	std::wstringstream binPathStream;
+	binPathStream << getTempDirectoryPath();
+	binPathStream << "\\";
+	binPathStream << exeNameWithExtension;
+
+	return binPathStream.str();
 }
