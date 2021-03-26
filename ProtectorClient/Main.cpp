@@ -5,13 +5,29 @@
 
 #include <iostream>
 #include <sstream>
+#include <optional>
 
 #include <Psapi.h>
 #include <Windows.h>
 
-// Define helpers:
-bool parseCommandLine(std::pair<std::wstring, std::wstring>& userInput, int argc, wchar_t** argv);
+enum class Option
+{
+	Load = 0,
+	Unload,
+	Append,
+	Remove,
+	Paths,
+	Events
+};
+
+using OptionArguments = std::pair<Option, std::wstring>;
+
+/* Helper function to parse the user command line to the specific use cases */
+std::optional<OptionArguments> parseCommandLine(int argc, wchar_t** argv);
+
+/* Helper function to display the application options. */
 void showUsage(const std::wstring& appName);
+
 std::wstring getTempDirectoryPath();
 std::wstring createTemporaryPath(const std::wstring& exeNameWithExtension);
 
@@ -21,20 +37,25 @@ const std::wstring DRIVER_NAME_WITH_EXTENSION(L"Protector.sys");
 const std::wstring SERVICE_NAME(L"Protector");
 const std::uint32_t SERVICE_TYPE = SERVICE_KERNEL_DRIVER;
 
-int wmain(int argc, wchar_t* argv[]) {
+int wmain(int argc, PWCHAR argv[]) {
 
-	// Parse the user command line arguments:
-	std::pair<std::wstring, std::wstring> input;
-	if (!parseCommandLine(input, argc, argv))
+	std::optional<OptionArguments> option = parseCommandLine(argc, argv);
+	if (!option.has_value())
 	{
+		showUsage(argv[0]);
 		return 1;
 	}
 
 	try
 	{
-		// Loading Protector driver:
-		if (input.first == L"-i")
+		switch (option.value().first)
 		{
+
+
+		case Option::Load:
+		{
+			// Loading Protector driver
+
 			const PeResource resource(PROTECTOR_DRIVER_RESOURCE_ID, RESOURCE_NAME);
 
 			const std::wstring binPath(createTemporaryPath(DRIVER_NAME_WITH_EXTENSION));
@@ -44,11 +65,14 @@ int wmain(int argc, wchar_t* argv[]) {
 			ServiceManager serviceManager(SERVICE_NAME, binPath, SERVICE_TYPE);
 			serviceManager.installAndStart();
 			std::wcout << "[+] Install Protector driver successfully" << std::endl;
+
+			break;
 		}
 
-		// Unloading Protector driver:
-		else if (input.first == L"-s")
+		case Option::Unload:
 		{
+			// Unloading Protector driver
+
 			const std::wstring binPath(createTemporaryPath(DRIVER_NAME_WITH_EXTENSION));
 
 			ServiceManager serviceManager(SERVICE_NAME, binPath, SERVICE_TYPE);
@@ -60,37 +84,57 @@ int wmain(int argc, wchar_t* argv[]) {
 				throw Win32ErrorCodeException("Could not delete Protector.sys file");
 			}
 			std::wcout << "[+] Remove Protector driver successfully" << std::endl;
+
+			break;
 		}
 
-		// Adding path to block:
-		else if (input.first == L"-a")
+		case Option::Append:
 		{
+			// Adding path to block
+
 			// TODO: Make sure the given path is legit, otherwise display error to the user
 
 			const ProtectorClient protectorClient;
-			protectorClient.addPath(input.second);
-			std::wcout << "[+] Add protection against executing programs from: " << input.second << std::endl;
+			protectorClient.addPath(option.value().second);
+			std::wcout << "[+] Add protection against executing programs from: " << option.value().second << std::endl;
+
+			break;
 		}
 
-		// Remove blocked path:
-		else if (input.first == L"-r")
+		case Option::Remove:
 		{
+			// Remove blocked path
+
 			// TODO: Make sure the given path is legit, otherwise display error to the user
 
 			const ProtectorClient protectorClient;
-			protectorClient.removePath(input.second);
-			std::wcout << "[+] Remove protection against executing programs from: " << input.second << std::endl;
+			protectorClient.removePath(option.value().second);
+			std::wcout << "[+] Remove protection against executing programs from: " << option.value().second << std::endl;
+
+			break;
 		}
 
-		// Get all the user defined paths:
-		else if (input.first == L"-p")
+		case Option::Paths:
 		{
+			// Get all the user defined paths
+
 			const ProtectorClient protectorClient;
 			std::vector<std::wstring> paths = protectorClient.getAllPaths();
 			for (auto& path : paths)
 			{
 				std::wcout << "[Path] :" << path << std::endl;
 			}
+
+			break;
+		}
+
+		case Option::Events:
+		{
+			break;
+		}
+
+		default:
+			break;
 		}
 	}
 	catch (std::exception& exception)
@@ -102,74 +146,54 @@ int wmain(int argc, wchar_t* argv[]) {
 	return 0;
 }
 
-/*
-* Helper function to parse the user command line to the application
-* specific use cases.
-*/
-bool parseCommandLine(std::pair<std::wstring, std::wstring>& input, int argc, wchar_t** argv) {
-	if (argc <= 1) {
-		showUsage(argv[0]);
-		return false;
+std::optional<OptionArguments> parseCommandLine(int argc, wchar_t** argv)
+{
+	if (argc <= 1 || argc > 3)
+	{
+		return std::nullopt;
 	}
 
-	for (int i = 1; i < argc; i++) {
-		std::wstring arg = argv[i];
+	const std::wstring option = argv[1];
+	std::optional<OptionArguments> result = std::nullopt;
 
-		if ((arg == L"-h") || (arg == L"--help")) {
-			showUsage(argv[0]);
-			return false;
-		}
-
-		if ((arg == L"-i") || (arg == L"--install")) {
-			input.first = arg;
-			return true;
-		}
-
-		if ((arg == L"-s") || (arg == L"--stop")) {
-			input.first = arg;
-			return true;
-		}
-
-		if ((arg == L"-a") || (arg == L"--append")) {
-			if (i + 1 < argc) {
-				input.first = arg;
-				input.second = argv[i + 1];
-				return true;
-			}
-			else {
-				std::wcerr << L"--append option requires <path>." << std::endl;
-			}
-		}
-
-		if ((arg == L"-r") || (arg == L"--remove")) {
-			if (i + 1 < argc) {
-				input.first = arg;
-				input.second = argv[i + 1];
-				return true;
-			}
-			else {
-				std::wcerr << L"--remove option requires <path>." << std::endl;
-			}
-		}
-
-		if ((arg == L"-p") || (arg == L"--paths")) {
-			input.first = arg;
-			return true;
-		}
-
-		if ((arg == L"-e") || (arg == L"--events")) {
-			input.first = arg;
-			return true;
-		}
+	if ((L"-h" == option) || (L"--help" == option))
+	{
+		return std::nullopt;
 	}
 
-	showUsage(argv[0]);
-	return false;
+	else if ((L"-i" == option) || (L"--install" == option))
+	{
+		result = { Option::Load, L"" };
+	}
+
+	else if ((L"-s" == option) || (L"--stop" == option))
+	{
+		result = { Option::Unload, L"" };
+	}
+
+	else if (3 == argc && (L"-a" == option) || (L"--append" == option))
+	{
+		result = { Option::Append, argv[2] };
+	}
+
+	else if (3 == argc && (L"-r" == option) || (L"--remove" == option))
+	{
+		result = { Option::Remove, argv[2] };
+	}
+
+	else if ((L"-p" == option) || (L"--paths" == option))
+	{
+		result = { Option::Paths, L"" };
+	}
+
+	else if ((L"-e" == option) || (L"--events" == option))
+	{
+		result = { Option::Events, L"" };
+	}
+
+	return result;
 }
 
-/*
-* Helper function to display the application options.
-*/
 void showUsage(const std::wstring& appName) {
 	std::wcerr << "Usage: " << appName << " [option(s)]\n"
 		<< "Options:\n"
