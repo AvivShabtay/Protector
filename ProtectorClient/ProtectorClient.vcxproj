@@ -149,6 +149,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AutoHandle.cpp" />
+    <ClCompile Include="AutoServiceHandle.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="ProtectorClient.cpp" />
     <ClCompile Include="PeResource.cpp" />
@@ -156,6 +157,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AutoHandle.h" />
+    <ClInclude Include="AutoServiceHandle.h" />
     <ClInclude Include="ProtectorClient.h" />
     <ClInclude Include="PeResource.h" />
     <ClInclude Include="Win32ErrorCodeException.h" />
