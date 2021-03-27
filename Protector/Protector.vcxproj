@@ -135,12 +135,13 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PrecompiledHeader>Create</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>
+      </PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <AdditionalOptions>/integritycheck %(AdditionalOptions)</AdditionalOptions>
@@ -164,15 +165,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FastMutex.cpp" />
-    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="Memory.cpp" />
     <ClCompile Include="Protector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AutoLock.h" />
     <ClInclude Include="FastMutex.h" />
-    <ClInclude Include="pch.h" />
+    <ClInclude Include="Memory.h" />
     <ClInclude Include="Protector.h" />
     <ClInclude Include="ProtectorCommon.h" />
+    <ClInclude Include="String.h" />
+    <ClInclude Include="UniquePtr.h" />
+    <ClInclude Include="Vector.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

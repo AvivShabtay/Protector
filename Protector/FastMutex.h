@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ntddk.h>
+
 class FastMutex {
 public:
 	void Init();
@@ -7,5 +9,5 @@ public:
 	void Unlock();
 
 private:
-	FAST_MUTEX _mutex;
+	FAST_MUTEX m_mutex;
 };

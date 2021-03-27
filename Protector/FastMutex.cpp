@@ -1,15 +1,13 @@
-#include "pch.h"
 #include "FastMutex.h"
 
-
 void FastMutex::Init() {
-	ExInitializeFastMutex(&_mutex);
+	ExInitializeFastMutex(&m_mutex);
 }
 
 void FastMutex::Lock() {
-	ExAcquireFastMutex(&_mutex);
+	ExAcquireFastMutex(&m_mutex);
 }
 
 void FastMutex::Unlock() {
-	ExReleaseFastMutex(&_mutex);
+	ExReleaseFastMutex(&m_mutex);
 }
