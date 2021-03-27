@@ -71,6 +71,20 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING) {
 	// In case of failure:
 	if (!NT_SUCCESS(status)) {
 		if (symLinkCreated)
+		{
+			IoDeleteSymbolicLink(&symLink);
+		}
+		if (DeviceObject)
+		{
+			IoDeleteDevice(DeviceObject);
+		}
+		if (processCallbackRegistered)
+		{
+			PsSetCreateProcessNotifyRoutineEx(OnProcessNotify, TRUE);
+		}
+
+	}
+
 			IoDeleteSymbolicLink(&symLink);
 		if (DeviceObject)
 			IoDeleteDevice(DeviceObject);
