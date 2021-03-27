@@ -165,13 +165,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FastMutex.cpp" />
-    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="Memory.cpp" />
     <ClCompile Include="Protector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AutoLock.h" />
     <ClInclude Include="FastMutex.h" />
-    <ClInclude Include="pch.h" />
+    <ClInclude Include="Memory.h" />
     <ClInclude Include="Protector.h" />
     <ClInclude Include="ProtectorCommon.h" />
   </ItemGroup>
