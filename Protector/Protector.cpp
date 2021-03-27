@@ -1,7 +1,8 @@
-#include "pch.h"
 #include "Protector.h"
 #include "ProtectorCommon.h"
 #include "AutoLock.h"
+
+#include <ntddk.h>
 
 // Define prototypes:
 DRIVER_UNLOAD ProtectorUnload;

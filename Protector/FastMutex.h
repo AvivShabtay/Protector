@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ntddk.h>
+
 class FastMutex {
 public:
 	void Init();

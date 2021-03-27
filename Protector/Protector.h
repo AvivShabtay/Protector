@@ -1,6 +1,8 @@
 #pragma once
 #include "FastMutex.h"
 
+#include <ntddk.h>
+
 #define DRIVER_PREFIX "Protector: "
 #define DRIVER_TAG 'Prtc'
 
