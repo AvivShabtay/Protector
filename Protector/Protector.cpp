@@ -158,12 +158,10 @@ NTSTATUS ProtectorDeviceControl(PDEVICE_OBJECT, PIRP Irp)
 	return CompleteIrp(Irp, status);
 }
 
-NTSTATUS AddPathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation) {
-	auto& deviceIoControl = StackLocation->Parameters.DeviceIoControl;
-
-	if (deviceIoControl.InputBufferLength < sizeof(ProtectorPath))
+NTSTATUS AddPathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation)
+{
+	if (!IsValidInputBuffer(StackLocation, sizeof(ProtectorPath)))
 	{
-		KdPrint((DRIVER_PREFIX "Invalid incoming buffer\n"));
 		return STATUS_BUFFER_TOO_SMALL;
 	}
 
@@ -185,11 +183,8 @@ NTSTATUS AddPathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation) {
 
 NTSTATUS RemovePathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation)
 {
-	auto& deviceIoControl = StackLocation->Parameters.DeviceIoControl;
-
-	if (sizeof(ProtectorPath) > deviceIoControl.InputBufferLength)
+	if (!IsValidInputBuffer(StackLocation, sizeof(ProtectorPath)))
 	{
-		KdPrint((DRIVER_PREFIX "Invalid incoming buffer\n"));
 		return STATUS_BUFFER_TOO_SMALL;
 	}
 
@@ -218,11 +213,8 @@ NTSTATUS RemovePathHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation)
 
 NTSTATUS GetPathListLengthHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation)
 {
-	auto& deviceIoControl = StackLocation->Parameters.DeviceIoControl;
-
-	if (sizeof(ULONG) > deviceIoControl.OutputBufferLength)
+	if (!IsValidOutputBuffer(StackLocation, sizeof(ULONG)))
 	{
-		KdPrint((DRIVER_PREFIX "Invalid incoming buffer\n"));
 		return STATUS_BUFFER_TOO_SMALL;
 	}
 
@@ -241,9 +233,7 @@ NTSTATUS GetPathListLengthHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLo
 
 NTSTATUS GetPathsHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation)
 {
-	auto& deviceIoControl = StackLocation->Parameters.DeviceIoControl;
-
-	if (sizeof(ProtectorPath) > deviceIoControl.OutputBufferLength)
+	if (!IsValidOutputBuffer(StackLocation, sizeof(ProtectorPath)))
 	{
 		return STATUS_BUFFER_TOO_SMALL;
 	}
@@ -321,4 +311,30 @@ bool IsPathInBlackList(const ProtectorString& imagePath)
 	}
 
 	return false;
+}
+
+bool IsValidInputBuffer(PIO_STACK_LOCATION StackLocation, ULONGLONG validSize)
+{
+	auto& deviceIoControl = StackLocation->Parameters.DeviceIoControl;
+
+	if (validSize > deviceIoControl.InputBufferLength)
+	{
+		KdPrint((DRIVER_PREFIX "Invalid incoming input buffer\n"));
+		return false;
+	}
+
+	return true;
+}
+
+bool IsValidOutputBuffer(PIO_STACK_LOCATION StackLocation, ULONGLONG validSize)
+{
+	auto& deviceIoControl = StackLocation->Parameters.DeviceIoControl;
+
+	if (validSize > deviceIoControl.OutputBufferLength)
+	{
+		KdPrint((DRIVER_PREFIX "Invalid incoming output buffer\n"));
+		return false;
+	}
+
+	return true;
 }

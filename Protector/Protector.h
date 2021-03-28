@@ -55,3 +55,9 @@ NTSTATUS GetPathListLengthHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLo
 
 /* Handler for get paths requests. */
 NTSTATUS GetPathsHandler(_In_ PIRP Irp, _In_ PIO_STACK_LOCATION StackLocation);
+
+/* Check if the input buffer size is not smaller than required. */
+bool IsValidInputBuffer(_In_ PIO_STACK_LOCATION StackLocation, _In_ ULONGLONG validSize);
+
+/* Check if the output buffer size is not smaller than required. */
+bool IsValidOutputBuffer(_In_ PIO_STACK_LOCATION StackLocation, _In_ ULONGLONG validSize);
