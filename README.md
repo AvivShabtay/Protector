@@ -26,6 +26,7 @@ Show CLI commands:
 <img src="imgs/usage_example.jpg" width=500></img>
 
 (-i) Installing Protector driver
+
 (-a <path>) Adding malicious paths to protect from
 
 <img src="imgs/dbg_log_add_bad_path.jpg" width=500></img>
