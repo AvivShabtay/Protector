@@ -4,31 +4,43 @@ Kernel driver to monitor execution of programs from paths defined to be avoided 
 ---
 
 ### How to use
-1. Install the driver - run the following command using CMD:
-```shell
-    sc create protector type= kernel binPath= <location of Protector.sys file>
+##### ProtectorClient CLI options
+```Bash
+c:\> ProtectorClient.exe
+Usage: ProtectorClient.exe [option(s)]
+Options:
+        -h,--help               Show this help message
+        -i,--install            Dump Protector.sys and load it
+        -s,--stop               Stop Protector driver, unload it and cleanup the executable
+        -a,--append <PATH>      Specify path to protect from
+        -r,--remove <PATH>      Specify path to remove from protection
+        -p,--paths              Show all the defined paths
+        -e,--events             Show event of blocked execution
 ```
-2. Load the driver to kernel space - run the following command using CMD:
 
-```shell
-    sc start protector
-```
-3. Use the Protector CLI - ToDO
-   * <code>ProtectorClient.exe -h</code> - get help information
-   * <code>ProtectorClient.exe -a \<path></code> - add new path
-   * <code>ProtectorClient.exe -r \<path></code> - remove existing path
-   * <code>ProtectorClient.exe -p </code> - get all defined paths
-   * <code>ProtectorClient.exe -e</code> - consume events from driver
----
+##### Use case example
+Show CLI commands:
 
-### Example of running Protector
 <img src="imgs/protectorCLI.jpg" width=500></img>
-<img src="imgs/protectorExample.jpg" width=500></img>
-* Protector driver have been loaded to kernel space and start running
-* ProtectorClient have been used to add path to protect from: "C:\TEST"
-* Protector driver monitoring process executions
-* Protector have been blocking programs execution from the blocked path
----
+
+<img src="imgs/usage_example.jpg" width=500></img>
+
+(-i) Installing Protector driver
+(-a <path>) Adding malicious paths to protect from
+
+<img src="imgs/dbg_log_add_bad_path.jpg" width=500></img>
+
+(-p) Verify the paths
+<i>Now Protector preform the protections</i>
+
+<img src="imgs/dbg_log_blocking.jpg" width=500></img>
+
+Dangerous programs would be blocked from executing:
+
+<img src="imgs/blocked_process.jpg" width=500></img>
+
+(-s) Uninstall Protector driver
+
 
 ### Notes
 * Turn your machine to test-signing mode in order to use Protector.
@@ -36,21 +48,23 @@ Kernel driver to monitor execution of programs from paths defined to be avoided 
 ---
 
 ### ToDo
-- [X] Add notification to processes
-- [X] Search for execution for monitored paths
-- [X] Add data structure to hold multiple paths
-- [ ] Add data structure to hold event (attempts to run program from monitored path)
-- [ ] Update client application to support all the functionality
+- [ ] Add object notification
+- [ ] Add class in Kernel-Code to wrap all protector logic 
+- [ ] Add data structure to hold blocked-program events
+- [ ] Add Kernel & user mode support for getting events data
 
 ---
 
 ### Useful links
 * OSR Windows Linked Lists tutorial - https://www.osronline.com/article.cfm%5Earticle=499.htm
 * DebugView not showing KdPrint output - https://stackoverflow.com/a/45627365
+* Resources in Visual Studio - https://www.ired.team/offensive-security/code-injection-process-injection/loading-and-executing-shellcode-from-portable-executable-resources
+* UNICODE_STRING not guaranteed to be NULL-terminated - https://community.osr.com/discussion/243646/wcsstr-in-kernel
+* Global variables in Kernel-Code - LNK2019 unresolved external symbol atexit referenced in function "void __cdecl `dynamic initializer for 'xxxx''(void)" - https://community.osr.com/discussion/144190/unresolved-external-symbol-atexit
 ---
 
 
 ### Common issues
 #### Resource file opened in another editor
 When using `Resource View` in `Visual Studio` you can get this error sometimes. <br>
-I used `Notepad++` to open the file from the local folder and then try to open the `Resource View` again and it fixed the problem.
+I've used `Notepad++` to open the file from the local folder and then try to open the `Resource View` again and it fixed the problem.
