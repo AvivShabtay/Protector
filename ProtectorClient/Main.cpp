@@ -2,6 +2,7 @@
 #include "PeResource.h"
 #include "ServiceManager.h"
 #include "Win32ErrorCodeException.h"
+#include "SehTranslatorGuard.h"
 
 #include <iostream>
 #include <sstream>
@@ -38,6 +39,8 @@ const std::wstring SERVICE_NAME(L"Protector");
 const std::uint32_t SERVICE_TYPE = SERVICE_KERNEL_DRIVER;
 
 int wmain(int argc, PWCHAR argv[]) {
+
+	SehTranslatorGuard sehTranslatorGuard;
 
 	std::optional<OptionArguments> option = parseCommandLine(argc, argv);
 	if (!option.has_value())
