@@ -89,6 +89,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile />
+      <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -104,6 +105,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile />
+      <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -124,6 +126,7 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -141,6 +144,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
+      <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -155,6 +159,8 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="ProtectorClient.cpp" />
     <ClCompile Include="PeResource.cpp" />
+    <ClCompile Include="SehException.cpp" />
+    <ClCompile Include="SehTranslatorGuard.cpp" />
     <ClCompile Include="ServiceManager.cpp" />
     <ClCompile Include="Win32ErrorCodeException.cpp" />
   </ItemGroup>
@@ -163,6 +169,8 @@
     <ClInclude Include="AutoServiceHandle.h" />
     <ClInclude Include="ProtectorClient.h" />
     <ClInclude Include="PeResource.h" />
+    <ClInclude Include="SehException.h" />
+    <ClInclude Include="SehTranslatorGuard.h" />
     <ClInclude Include="ServiceManager.h" />
     <ClInclude Include="Win32ErrorCodeException.h" />
   </ItemGroup>
